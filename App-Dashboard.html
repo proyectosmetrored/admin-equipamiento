@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tablero de Indicadores — Equipamiento (Metrored)</title>
+<style>
+  :root{--azul:#0e7490;--azul-osc:#155e75;--teal:#0d9488;--verde:#16a34a;--rojo:#dc2626;--amber:#d97706;--rosa:#e11d48;--gris:#64748b;--gris-cl:#f1f5f9;--linea:#e2e8f0;--texto:#0f172a;--bg:#f8fafc}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--texto);font-size:15px}
+  header{background:linear-gradient(135deg,var(--azul),var(--teal));color:#fff;padding:14px 18px;position:sticky;top:0;z-index:40;box-shadow:0 2px 10px rgba(0,0,0,.12);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  header h1{margin:0;font-size:18px;font-weight:800;display:flex;gap:8px;align-items:center}
+  header .sub{font-size:12.5px;opacity:.92}
+  .wrap{max-width:1200px;margin:0 auto;padding:16px}
+  .card{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  label{display:block;font-size:12px;font-weight:700;color:#334155;margin:0 0 5px}
+  select,input{width:100%;padding:9px 10px;border:1.5px solid var(--linea);border-radius:9px;font-size:14px;background:#fff;color:var(--texto);font-family:inherit}
+  select:focus,input:focus{outline:none;border-color:var(--azul);box-shadow:0 0 0 3px rgba(14,116,144,.12)}
+  button{font-family:inherit;font-weight:700;border:none;border-radius:9px;padding:9px 14px;cursor:pointer;font-size:14px}
+  .btn-ghost{background:var(--gris-cl);color:#334155}
+  .hide{display:none!important}
+  /* slicers */
+  .slicers{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;align-items:end;margin-bottom:12px}
+  @media(max-width:900px){.slicers{grid-template-columns:1fr 1fr 1fr}}
+  @media(max-width:560px){.slicers{grid-template-columns:1fr 1fr}}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;min-height:4px}
+  .chip{background:#e0f2fe;color:var(--azul-osc);border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+  .chip b{font-weight:800}
+  .chip .x{background:var(--azul);color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:11px}
+  /* kpis */
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
+  @media(max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:560px){.kpis{grid-template-columns:1fr 1fr}}
+  .kpi{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:14px;text-align:center}
+  .kpi.a{background:#ecfeff;border-color:#a5f3fc}
+  .kpi .num{font-size:30px;font-weight:800;color:var(--azul-osc);line-height:1.05}
+  .kpi .lbl{font-size:12px;color:var(--gris);font-weight:600;margin-top:5px}
+  /* charts */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .chart h4{margin:0 0 4px;color:var(--azul-osc);font-size:15px;display:flex;justify-content:space-between;align-items:center}
+  .chart .hint{font-size:11.5px;color:var(--gris);font-weight:500}
+  .chart-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12.5px;border-radius:8px;padding:2px 4px;transition:background .1s}
+  .chart-row.clk{cursor:pointer}
+  .chart-row.clk:hover{background:#f1f5f9}
+  .chart-row.sel{background:#e0f2fe}
+  .chart-label{width:150px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#334155}
+  .chart-track{flex:1;background:#eef2f7;border-radius:6px;height:20px;overflow:hidden}
+  .chart-fill{height:100%;border-radius:6px;min-width:3px}
+  .chart-val{width:52px;flex:none;text-align:right;font-weight:800;color:var(--texto)}
+  .empty2{color:var(--gris);font-size:13px;padding:10px 0;text-align:center}
+  .aviso{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px 18px;color:#713f12;font-size:14px;line-height:1.5}
+  .aviso b{color:#92400e}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:11px 18px;border-radius:10px;font-size:14px;opacity:0;transition:.3s;pointer-events:none;z-index:90}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>📊 Tablero de Indicadores</h1>
+    <div class="sub">Equipamiento de Consultorios · Metrored</div>
+  </div>
+  <button class="btn-ghost" onclick="location.reload()">↻ Actualizar</button>
+</header>
+
+<div class="wrap">
+  <div id="cargando" class="card" style="text-align:center;color:var(--gris)">Cargando registros…</div>
+
+  <div id="tablero" class="hide">
+    <div class="card" style="margin-bottom:14px">
+      <div class="slicers">
+        <div><label>Centro</label><select id="sCentro" onchange="onSlicer('centro',this.value)"></select></div>
+        <div><label>Especialidad</label><select id="sEsp" onchange="onSlicer('especialidad',this.value)"></select></div>
+        <div><label>Categoría</label><select id="sCat" onchange="onSlicer('categoria',this.value)"></select></div>
+        <div><label>Turno</label><select id="sTurno" onchange="onSlicer('turno',this.value)"></select></div>
+        <div><label>Desde</label><input id="sDesde" type="date" onchange="onSlicer('desde',this.value)"></div>
+        <div><label>Hasta</label><input id="sHasta" type="date" onchange="onSlicer('hasta',this.value)"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end"><button class="btn-ghost" onclick="limpiar()">Limpiar filtros</button></div>
+    </div>
+
+    <div id="chips" class="chips"></div>
+    <div id="kpis" class="kpis"></div>
+    <div id="charts" class="grid"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ==== CONFIG ==== */
+const DASHBOARD_URL = "https://default480bd49c6f894faab39ec7728d95d1.30.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/28/workflows/c144280a72234137aa435785a59c6b39/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=vWy5pGP9o6gOniPhAACYtUqLHw6alYtSoGOxojDPpBg";  // flujo "Todos los registros"
+const CATALOGOS_URL = "https://default480bd49c6f894faab39ec7728d95d1.30.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/4e7603afaa634f939c70db7787ae34bb/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=ONrgwLUoMl6UptXg3P6g_QHkeyMV8HtHfuD7ibzRGmI";
+
+const $ = s => document.querySelector(s);
+function v(x){ if(x==null) return ""; if(Array.isArray(x)) x=x[0]; if(x&&typeof x==="object") return x.Value!=null?x.Value:""; return x; }
+function numN(x){ x=v(x); return (x===""||x==null)?null:Number(x); }
+function escHtml(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2400); }
+
+let REGS=[];
+const F={centro:"",especialidad:"",categoria:"",turno:"",desde:"",hasta:""};
+const LBL={centro:"Centro",especialidad:"Especialidad",categoria:"Categoría",turno:"Turno",desde:"Desde",hasta:"Hasta"};
+
+window.addEventListener("DOMContentLoaded", init);
+async function init(){
+  if(!DASHBOARD_URL){
+    $("#cargando").className="aviso";
+    $("#cargando").innerHTML="⏳ <b>Falta conectar el flujo de datos.</b> El tablero está listo; solo necesita el flujo <b>«Todos los registros»</b> (trae los registros de todos los centros). Cuando lo creemos, se pega su URL aquí y funciona.";
+    return;
+  }
+  try{
+    let data=null;
+    for(let i=0;i<4 && !data;i++){ try{ const r=await fetch(DASHBOARD_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}); data=await r.json(); }catch(e){} }
+    if(!data) throw new Error("sin datos");
+    const regs=(data.registros||[]).map(normReg);
+    const porReg={};
+    (data.detalle||[]).forEach(x=>{ const k=v(x.IdClienteRegistro); (porReg[k]=porReg[k]||[]).push(normDet(x)); });
+    regs.forEach(r=>{ r.detalle=porReg[r.id]||[]; });
+    REGS=regs;
+    $("#cargando").classList.add("hide"); $("#tablero").classList.remove("hide");
+    buildSlicers(); render();
+  }catch(e){ $("#cargando").innerHTML="No se pudieron cargar los registros. Revisa el internet y recarga."; }
+}
+function normReg(x){ return {
+  id:v(x.IdCliente), centro:v(x.Centro), especialidad:v(x.Especialidad),
+  numeroConsultorio:v(x.NumeroConsultorio), turno:v(x.Turno),
+  fecha:v(x.Fecha)?String(v(x.Fecha)).slice(0,10):"", hora:v(x.Hora),
+  auxiliar:v(x.Auxiliar), enfermero:v(x.Enfermero), fisioterapista:v(x.Fisioterapista) }; }
+function normDet(x){ const c=String(v(x.Cumple)).trim().toLowerCase();
+  return { categoria:v(x.Categoria), item:v(x.Title)||v(x.Item),
+    cumple:(c==="sí"||c==="si")?true:(c==="no"?false:null),
+    cantidad:numN(x.Cantidad), reposicion:numN(x.Reposicion), retirar:numN(x.Retirar) }; }
+
+/* ---- slicers ---- */
+function uniq(arr){ return [...new Set(arr.filter(Boolean))].sort(); }
+function buildSlicers(){
+  const cats=uniq([].concat(...REGS.map(r=>(r.detalle||[]).map(d=>d.categoria))));
+  fillSel("sCentro","Todos los centros",uniq(REGS.map(r=>r.centro)));
+  fillSel("sEsp","Todas las especialidades",uniq(REGS.map(r=>r.especialidad)));
+  fillSel("sCat","Todas las categorías",cats);
+  fillSel("sTurno","Todos los turnos",uniq(REGS.map(r=>r.turno)));
+}
+function fillSel(id,todos,opts){
+  $("#"+id).innerHTML=`<option value="">${todos}</option>`+opts.map(o=>`<option>${escHtml(o)}</option>`).join("");
+}
+function onSlicer(dim,val){ F[dim]=val; render(); }
+function setFilter(dim,val){ F[dim]=(F[dim]===val)?"":val; render(); }
+function limpiar(){ Object.keys(F).forEach(k=>F[k]=""); render(); }
+
+/* ---- filtrado ---- */
+function baseRegs(){
+  return REGS.filter(r=>{
+    if(F.centro && r.centro!==F.centro) return false;
+    if(F.especialidad && r.especialidad!==F.especialidad) return false;
+    if(F.turno && r.turno!==F.turno) return false;
+    if(F.desde && r.fecha && r.fecha<F.desde) return false;
+    if(F.hasta && r.fecha && r.fecha>F.hasta) return false;
+    return true;
+  });
+}
+
+/* ---- render ---- */
+function render(){
+  // sincronizar slicers con F
+  $("#sCentro").value=F.centro; $("#sEsp").value=F.especialidad; $("#sCat").value=F.categoria;
+  $("#sTurno").value=F.turno; $("#sDesde").value=F.desde; $("#sHasta").value=F.hasta;
+  // chips
+  const chips=Object.keys(F).filter(k=>F[k]).map(k=>`<span class="chip" onclick="setFilter('${k}','${String(F[k]).replace(/'/g,"\\'")}')"><b>${LBL[k]}:</b> ${escHtml(F[k])} <span class="x">✕</span></span>`);
+  $("#chips").innerHTML = chips.length? chips.join("") : '<span style="color:var(--gris);font-size:12.5px">Sin filtros — mostrando todo. Haz clic en una barra para filtrar.</span>';
+
+  const base=baseRegs();
+  let si=0,no=0,repo=0,reti=0;
+  const porCentro={},porEsp={},porDia={},porCat={},pRepo={},pReti={},centros=new Set();
+  base.forEach(r=>{
+    if(r.centro){centros.add(r.centro);porCentro[r.centro]=(porCentro[r.centro]||0)+1;}
+    if(r.especialidad)porEsp[r.especialidad]=(porEsp[r.especialidad]||0)+1;
+    if(r.fecha)porDia[r.fecha]=(porDia[r.fecha]||0)+1;
+    (r.detalle||[]).forEach(d=>{
+      if(F.categoria && d.categoria!==F.categoria) return;
+      if(d.cumple===true) si++; else if(d.cumple===false) no++;
+      if(d.categoria) porCat[d.categoria]=porCat[d.categoria]||0;
+      if(d.reposicion>0){ repo+=d.reposicion; pRepo[d.item]=(pRepo[d.item]||0)+d.reposicion; if(d.categoria)porCat[d.categoria]+=d.reposicion; }
+      if(d.retirar>0){ reti+=d.retirar; pReti[d.item]=(pReti[d.item]||0)+d.retirar; if(d.categoria)porCat[d.categoria]+=d.retirar; }
+    });
+  });
+  const pct=(si+no)>0?Math.round(si*100/(si+no)):null;
+  $("#kpis").innerHTML=`
+    <div class="kpi a"><div class="num">${base.length}</div><div class="lbl">Registros</div></div>
+    <div class="kpi"><div class="num">${centros.size}</div><div class="lbl">Centros</div></div>
+    <div class="kpi"><div class="num">${pct==null?'—':pct+'%'}</div><div class="lbl">Cumplimiento</div></div>
+    <div class="kpi"><div class="num" style="color:#854d0e">${repo}</div><div class="lbl">♻️ Repuesto</div></div>
+    <div class="kpi"><div class="num" style="color:#9f1239">${reti}</div><div class="lbl">🗑️ Retirado</div></div>`;
+
+  const ent=o=>Object.entries(o).map(([label,val])=>({label,val})).sort((a,b)=>b.val-a.val);
+  const diaEnt=Object.keys(porDia).sort().map(k=>({label:k,val:porDia[k]}));
+  $("#charts").innerHTML=[
+    chart("Registros por centro", ent(porCentro), {color:"var(--azul)", dim:"centro", hint:"clic para filtrar"}),
+    chart("Registros por especialidad", ent(porEsp), {color:"var(--teal)", dim:"especialidad", hint:"clic para filtrar"}),
+    chart("Cumplimiento", [{label:"✓ Cumple",val:si,color:"var(--verde)"},{label:"✗ No cumple",val:no,color:"var(--rosa)"}], {}),
+    chart("Movimiento por categoría (repuesto+retirado)", ent(porCat), {color:"var(--amber)", dim:"categoria", hint:"clic para filtrar"}),
+    chart("Top 10 productos repuestos ♻️", ent(pRepo).slice(0,10), {color:"#d97706"}),
+    chart("Top 10 productos retirados 🗑️", ent(pReti).slice(0,10), {color:"var(--rosa)"}),
+    chart("Registros por día", diaEnt, {color:"var(--azul-osc)"})
+  ].join("");
+}
+
+function chart(title, entries, opts){
+  opts=opts||{};
+  const body = (!entries.length||entries.every(e=>!e.val))
+    ? '<div class="empty2">Sin datos en este filtro.</div>'
+    : (()=>{ const max=Math.max.apply(null,entries.map(e=>e.val))||1;
+        return entries.map(e=>{
+          const sel = opts.dim && F[opts.dim]===e.label;
+          const clk = opts.dim ? `class="chart-row clk${sel?' sel':''}" onclick="setFilter('${opts.dim}','${String(e.label).replace(/'/g,"\\'")}')"` : 'class="chart-row"';
+          return `<div ${clk}>
+            <div class="chart-label" title="${escHtml(e.label)}">${escHtml(e.label)}</div>
+            <div class="chart-track"><div class="chart-fill" style="width:${Math.max(3,Math.round(e.val*100/max))}%;background:${e.color||opts.color||'var(--azul)'}"></div></div>
+            <div class="chart-val">${e.val}</div></div>`;
+        }).join(""); })();
+  return `<div class="card chart"><h4>${escHtml(title)}${opts.hint?`<span class="hint">${opts.hint}</span>`:""}</h4>${body}</div>`;
+}
+</script>
+</body>
+</html>

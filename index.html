@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de Administración — Equipamiento (Metrored)</title>
+<style>
+  :root{--azul:#0e7490;--azul-osc:#155e75;--teal:#0d9488;--verde:#16a34a;--rojo:#dc2626;--amber:#d97706;--gris:#64748b;--gris-cl:#f1f5f9;--linea:#e2e8f0;--texto:#0f172a;--bg:#f8fafc;--radio:14px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--texto);font-size:16px;line-height:1.45}
+  header{background:linear-gradient(135deg,var(--azul),var(--teal));color:#fff;padding:14px 18px;position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.12);display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .btn-tablero{background:rgba(255,255,255,.2);color:#fff;text-decoration:none;padding:9px 14px;border-radius:10px;font-weight:700;font-size:14px;white-space:nowrap}
+  .btn-tablero:hover{background:rgba(255,255,255,.33)}
+  header h1{margin:0;font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
+  header .sub{font-size:12.5px;opacity:.9;margin-top:2px}
+  .wrap{max-width:1080px;margin:0 auto;padding:16px}
+  .card{background:#fff;border:1px solid var(--linea);border-radius:var(--radio);padding:18px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  label{display:block;font-size:13px;font-weight:600;color:#334155;margin:0 0 6px}
+  input,select{width:100%;padding:12px;border:1.5px solid var(--linea);border-radius:10px;font-size:16px;background:#fff;color:var(--texto);font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:var(--azul);box-shadow:0 0 0 3px rgba(14,116,144,.12)}
+  button{font-family:inherit;font-size:15px;font-weight:600;border:none;border-radius:10px;padding:12px 16px;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:7px;justify-content:center}
+  .btn-pri{background:var(--azul);color:#fff}.btn-pri:hover{background:var(--azul-osc)}
+  .btn-sec{background:#fff;color:var(--azul);border:1.5px solid var(--azul)}
+  .btn-ghost{background:var(--gris-cl);color:#334155}
+  .btn-ok{background:var(--verde);color:#fff}.btn-warn{background:#fef3c7;color:#92400e}
+  button:disabled{opacity:.55;cursor:not-allowed}
+  .hide{display:none!important}
+  .tabbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .tabbar button{flex:1;min-width:100px;background:#fff;border:1px solid var(--linea);color:var(--gris)}
+  .tabbar button.act{background:var(--azul);color:#fff;border-color:var(--azul)}
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .toolbar input,.toolbar select{flex:1;min-width:160px}
+  .toolbar .btn-ok{flex:none}
+  .conteo{font-size:13px;color:var(--gris);margin-bottom:10px}
+  .tabla-wrap{overflow-x:auto;border:1px solid var(--linea);border-radius:12px}
+  table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--linea);vertical-align:middle;white-space:nowrap}
+  th{background:var(--azul);color:#fff;font-weight:600}
+  tr:nth-child(even) td{background:#fafcfe}
+  .badge{display:inline-block;border-radius:999px;padding:3px 11px;font-size:12.5px;font-weight:700}
+  .b-si{background:#dcfce7;color:#166534}.b-no{background:#fee2e2;color:#991b1b}
+  .acc-btns{display:flex;gap:6px;flex-wrap:wrap}
+  .acc-btns button{padding:7px 11px;font-size:13px}
+  .empty{text-align:center;color:var(--gris);padding:40px 10px;font-size:14px}
+  /* Tarjetas (sin scroll horizontal) */
+  #lista{display:flex;flex-direction:column;gap:10px}
+  .rec{border:1px solid var(--linea);border-radius:12px;padding:12px 14px;background:#fff}
+  .rec-off{background:#fafafa;opacity:.75}
+  .rec-title{font-size:16px;font-weight:700;color:var(--texto);word-break:break-word}
+  .rec-fields{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px}
+  .rec-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--gris-cl);padding-top:10px}
+  .fld{font-size:13.5px;color:#334155;display:inline-flex;align-items:center;gap:5px}
+  .fld-l{color:var(--gris);font-weight:600}
+  .combo{position:relative}
+  .combo-list{position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:60;background:#fff;border:1.5px solid var(--azul);border-radius:10px;max-height:240px;overflow:auto;box-shadow:0 8px 22px rgba(0,0,0,.16);-webkit-overflow-scrolling:touch}
+  .combo-opt{padding:12px 14px;cursor:pointer;font-size:16px;border-bottom:1px solid var(--gris-cl)}
+  .combo-opt:last-child{border-bottom:none}.combo-opt:active,.combo-opt.active{background:#e0f2fe}
+  @media(hover:hover){.combo-opt:hover{background:#e0f2fe}}
+  .combo-empty{padding:12px 14px;color:var(--gris);font-size:14px}
+  .modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:90;padding:16px}
+  .modal.show{display:flex}
+  .modal .box{background:#fff;border-radius:14px;max-width:480px;width:100%;max-height:88vh;overflow:auto;padding:20px}
+  .modal h2{margin:0 0 6px;font-size:18px;color:var(--azul-osc)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  .row-btns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .row-btns button{flex:1;min-width:120px}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:100;opacity:0;transition:.3s;pointer-events:none;max-width:90%}
+  .toast.show{opacity:1}
+  .err{color:var(--rojo);font-size:13px;margin-top:8px;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🗂️ Panel de Administración</h1>
+    <div class="sub">Equipamiento de Consultorios · Metrored</div>
+  </div>
+  <a class="btn-tablero" href="App-Dashboard.html" target="_blank">📈 Tablero</a>
+</header>
+
+<div class="wrap">
+  <div id="cargando" class="card" style="text-align:center;color:var(--gris)">Cargando catálogos…</div>
+
+  <div id="panel" class="hide">
+    <div class="tabbar">
+      <button id="tab_aux" class="act" onclick="setTab('aux')">Auxiliares</button>
+      <button id="tab_enf" onclick="setTab('enf')">Enfermeros</button>
+      <button id="tab_fis" onclick="setTab('fis')">Fisioterapistas</button>
+      <button id="tab_cen" onclick="setTab('cen')">Centros</button>
+      <button id="tab_esp" onclick="setTab('esp')">Especialidades</button>
+      <button id="tab_prod" onclick="setTab('prod')">Productos</button>
+      <button id="tab_len" onclick="setTab('len')">Lencería</button>
+      <button id="tab_coc" onclick="setTab('coc')">Coche de paro</button>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <input id="buscar" type="search" placeholder="🔎 Buscar…" oninput="renderTab()">
+        <button class="btn-ok" onclick="abrirForm()">+ Agregar</button>
+      </div>
+      <div id="filtrosExtra" class="toolbar"></div>
+      <div id="conteo" class="conteo"></div>
+      <div id="lista"></div>
+      <div id="vacio" class="empty hide"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal agregar/editar -->
+<div id="modal" class="modal" onclick="if(event.target===this)cerrarModal()">
+  <div class="box">
+    <h2 id="modalTit">Agregar</h2>
+    <div id="formBody"></div>
+    <div id="formErr" class="err hide"></div>
+    <div class="row-btns">
+      <button class="btn-ok" onclick="guardar()">💾 Guardar</button>
+      <button class="btn-ghost" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ==== CONFIG ==== */
+const CATALOGOS_URL = "https://default480bd49c6f894faab39ec7728d95d1.30.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/4e7603afaa634f939c70db7787ae34bb/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=ONrgwLUoMl6UptXg3P6g_QHkeyMV8HtHfuD7ibzRGmI";
+const ADMIN_URL = "https://default480bd49c6f894faab39ec7728d95d1.30.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/30/workflows/46b5fe9999f940d1a6171526c7ebf526/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=edWNGAyBtc6xPdI_Rnu1pfDgbl8h4ipLDiLSmn6tNhQ";
+
+const $ = s => document.querySelector(s);
+function v(x){ if(x==null) return ""; if(Array.isArray(x)) x=x[0]; if(x&&typeof x==="object") return x.Value!=null?x.Value:""; return x; }
+function escHtml(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2800); }
+function si(x){ const s=String(v(x)).trim().toLowerCase(); return ["sí","si","s","x","true","1","yes"].includes(s); }
+function estado(a){ return a?'<span class="badge b-si">Activo</span>':'<span class="badge b-no">Inactivo</span>'; }
+function siNo(b){ return b?'<span class="badge b-si">Sí</span>':'<span class="badge b-no">No</span>'; }
+const SN = b => b?"Sí":"No";
+
+let ESPEC=[], CATEG=[], SECC_LEN=[], CLASE_COC=[];   // opciones para los formularios
+
+/* ==== Config de catálogos ==== */
+const persona = (lista,sing,label,src)=>({ lista,sing,label,src,
+  head:["Nombre","Centro","Estado"],
+  map:x=>({id:x.ID, nombre:v(x.Title), centro:v(x.field_1), activo:si(x.field_2)}),
+  cells:r=>[`<b>${escHtml(r.nombre)}</b>`, escHtml(r.centro||"—"), estado(r.activo)],
+  search:r=>r.nombre+" "+r.centro,
+  form:[{k:"nombre",label:"Nombre completo",type:"text",req:true},
+        {k:"centro",label:"Centro médico",type:"combo",opts:()=>CENTROS}],
+  vals:r=>({nombre:r.nombre,centro:r.centro,activo:SN(r.activo)}),
+  item:f=>({Title:f.nombre, field_1:{Value:f.centro}, field_2:{Value:f.activo}}) });
+
+const CATS = {
+  aux:persona("Cat_Auxiliares","auxiliar","Auxiliares","auxiliares"),
+  enf:persona("Cat_Enfermeros","enfermero","Enfermeros","enfermeros"),
+  fis:persona("Cat_Fisioterapistas","fisioterapista","Fisioterapistas","fisioterapistas"),
+  cen:{ lista:"Cat_Centros", sing:"centro", label:"Centros", src:"centros",
+    head:["Centro","Estado"],
+    map:x=>({id:x.ID, nombre:v(x.Title), activo:si(x.field_1)}),
+    cells:r=>[`<b>${escHtml(r.nombre)}</b>`, estado(r.activo)],
+    search:r=>r.nombre,
+    form:[{k:"nombre",label:"Nombre del centro",type:"text",req:true}],
+    vals:r=>({nombre:r.nombre,activo:SN(r.activo)}),
+    item:f=>({Title:f.nombre, field_1:{Value:f.activo}}) },
+  esp:{ lista:"Cat_Especialidades", sing:"especialidad", label:"Especialidades", src:"especialidades",
+    head:["Especialidad","Es crítica","Coche de paro","Estado"],
+    map:x=>({id:x.ID, nombre:v(x.Title), cocheParo:si(x.field_1), esCritica:si(x.field_2), activo:si(x.field_3)}),
+    cells:r=>[`<b>${escHtml(r.nombre)}</b>`, siNo(r.esCritica), siNo(r.cocheParo), estado(r.activo)],
+    search:r=>r.nombre,
+    form:[{k:"nombre",label:"Nombre de la especialidad",type:"text",req:true},
+          {k:"esCritica",label:"¿Es crítica? (registra por paciente)",type:"siNo"},
+          {k:"cocheParo",label:"¿Tiene coche de paro?",type:"siNo"}],
+    vals:r=>({nombre:r.nombre, esCritica:SN(r.esCritica), cocheParo:SN(r.cocheParo), activo:SN(r.activo)}),
+    item:f=>({Title:f.nombre, field_1:{Value:f.cocheParo}, field_2:{Value:f.esCritica}, field_3:{Value:f.activo}}) },
+  prod:{ lista:"Cat_Productos", sing:"producto", label:"Productos", src:"productos",
+    head:["Producto","Especialidad","Categoría","Cumple","Cant.","Repo.","Retirar","Obs.","Estado"],
+    map:x=>({id:x.ID, nombre:v(x.Title), especialidad:v(x.field_1), categoria:v(x.field_2),
+             check:si(x.field_3), cantidad:si(x.field_4), reposicion:si(x.field_5), retirar:si(x.field_6),
+             observacion:si(x.field_7), activo:si(x.field_8)}),
+    cells:r=>[`<b>${escHtml(r.nombre)}</b>`, escHtml(r.especialidad), escHtml(r.categoria),
+              siNo(r.check), siNo(r.cantidad), siNo(r.reposicion), siNo(r.retirar), siNo(r.observacion), estado(r.activo)],
+    search:r=>r.nombre+" "+r.especialidad+" "+r.categoria,
+    filtros:[{k:"especialidad",label:"Especialidad"},{k:"categoria",label:"Categoría"}],
+    form:[{k:"nombre",label:"Nombre del producto",type:"text",req:true},
+          {k:"especialidad",label:"Especialidad",type:"combo",opts:()=>ESPEC,req:true},
+          {k:"categoria",label:"Categoría",type:"combolibre",opts:()=>CATEG,req:true},
+          {k:"check",label:"Cumple (check)",type:"siNo"},
+          {k:"cantidad",label:"Cantidad",type:"siNo"},
+          {k:"reposicion",label:"Reposición",type:"siNo"},
+          {k:"retirar",label:"Retirar",type:"siNo"},
+          {k:"observacion",label:"Observación",type:"siNo"}],
+    vals:r=>({nombre:r.nombre, especialidad:r.especialidad, categoria:r.categoria,
+              check:SN(r.check), cantidad:SN(r.cantidad), reposicion:SN(r.reposicion),
+              retirar:SN(r.retirar), observacion:SN(r.observacion), activo:SN(r.activo)}),
+    item:f=>({Title:f.nombre, field_1:f.especialidad, field_2:f.categoria,
+              field_3:{Value:f.check}, field_4:{Value:f.cantidad}, field_5:{Value:f.reposicion},
+              field_6:{Value:f.retirar}, field_7:{Value:f.observacion}, field_8:{Value:f.activo}}) },
+  len:{ lista:"Cat_Lenceria", sing:"prenda", label:"Lencería", src:"lenceria",
+    head:["Prenda","Sección","Cumple","Cant.","Repo.","Retirar","Obs.","Estado"],
+    map:x=>({id:x.ID, nombre:v(x.Title), seccion:v(x.field_1),
+             check:si(x.field_2), cantidad:si(x.field_3), reposicion:si(x.field_4), retirar:si(x.field_5),
+             observacion:si(x.field_6), activo:si(x.field_7)}),
+    cells:r=>[`<b>${escHtml(r.nombre)}</b>`, escHtml(r.seccion),
+              siNo(r.check), siNo(r.cantidad), siNo(r.reposicion), siNo(r.retirar), siNo(r.observacion), estado(r.activo)],
+    search:r=>r.nombre+" "+r.seccion,
+    filtros:[{k:"seccion",label:"Sección"}],
+    form:[{k:"nombre",label:"Nombre de la prenda",type:"text",req:true},
+          {k:"seccion",label:"Sección",type:"combolibre",opts:()=>SECC_LEN,req:true},
+          {k:"check",label:"Cumple (check)",type:"siNo"},
+          {k:"cantidad",label:"Cantidad",type:"siNo"},
+          {k:"reposicion",label:"Reposición",type:"siNo"},
+          {k:"retirar",label:"Retirar",type:"siNo"},
+          {k:"observacion",label:"Observación",type:"siNo"}],
+    vals:r=>({nombre:r.nombre, seccion:r.seccion, check:SN(r.check), cantidad:SN(r.cantidad),
+              reposicion:SN(r.reposicion), retirar:SN(r.retirar), observacion:SN(r.observacion), activo:SN(r.activo)}),
+    item:f=>({Title:f.nombre, field_1:f.seccion, field_2:{Value:f.check}, field_3:{Value:f.cantidad},
+              field_4:{Value:f.reposicion}, field_5:{Value:f.retirar}, field_6:{Value:f.observacion}, field_7:{Value:f.activo}}) },
+  coc:{ lista:"Cat_CocheParo", sing:"ítem del coche", label:"Coche de paro", src:"cocheparo", activo:false,
+    head:["Ítem","Tipo","Clasificación"],
+    map:x=>({id:x.ID, nombre:v(x.Title), tipo:v(x.field_1), clase:v(x.field_2)}),
+    cells:r=>[`<b>${escHtml(r.nombre)}</b>`, escHtml(r.tipo), escHtml(r.clase)],
+    search:r=>r.nombre+" "+r.tipo+" "+r.clase,
+    filtros:[{k:"tipo",label:"Tipo"},{k:"clase",label:"Clasificación"}],
+    form:[{k:"nombre",label:"Nombre del ítem",type:"text",req:true},
+          {k:"tipo",label:"Tipo",type:"combolibre",opts:()=>["Diario","Quincenal"],req:true},
+          {k:"clase",label:"Clasificación",type:"combolibre",opts:()=>CLASE_COC,req:true}],
+    vals:r=>({nombre:r.nombre, tipo:r.tipo, clase:r.clase}),
+    item:f=>({Title:f.nombre, field_1:f.tipo, field_2:f.clase}) }
+};
+
+let DATA={}, CENTROS=[], TAB="aux", editId=null;
+
+window.addEventListener("DOMContentLoaded", init);
+async function init(){
+  try{
+    const r=await fetch(CATALOGOS_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+    if(!r.ok) throw new Error("status "+r.status);
+    const d=await r.json();
+    for(const k in CATS){ DATA[k]=(d[CATS[k].src]||[]).map(CATS[k].map); }
+    recomputeOpts();
+    $("#cargando").classList.add("hide"); $("#panel").classList.remove("hide");
+    setTab(TAB);
+  }catch(e){ $("#cargando").innerHTML="No se pudieron cargar los catálogos. Revisa el internet y recarga."; }
+}
+function recomputeOpts(){
+  CENTROS=(DATA.cen||[]).filter(r=>r.activo).map(r=>r.nombre).sort();
+  ESPEC=(DATA.esp||[]).filter(r=>r.activo).map(r=>r.nombre).sort();
+  CATEG=[...new Set((DATA.prod||[]).map(r=>r.categoria).filter(Boolean))].sort();
+  SECC_LEN=[...new Set((DATA.len||[]).map(r=>r.seccion).filter(Boolean))].sort();
+  CLASE_COC=[...new Set((DATA.coc||[]).map(r=>r.clase).filter(Boolean))].sort();
+}
+
+function setTab(t){
+  TAB=t; Object.keys(CATS).forEach(k=>$("#tab_"+k).classList.toggle("act",k===t));
+  $("#buscar").value=""; renderFiltros(); renderTab();
+}
+
+function renderFiltros(){
+  const cat=CATS[TAB], box=$("#filtrosExtra");
+  if(!cat.filtros){ box.innerHTML=""; box.classList.add("hide"); return; }
+  box.classList.remove("hide");
+  box.innerHTML=cat.filtros.map(f=>{
+    const vals=[...new Set((DATA[TAB]||[]).map(r=>r[f.k]).filter(Boolean))].sort();
+    return `<select data-fk="${f.k}" onchange="renderTab()"><option value="">Todas — ${escHtml(f.label)}</option>`
+      +vals.map(x=>`<option>${escHtml(x)}</option>`).join("")+`</select>`;
+  }).join("");
+}
+
+function renderTab(){
+  const cat=CATS[TAB];
+  const q=($("#buscar").value||"").trim().toLowerCase();
+  let arr=(DATA[TAB]||[]).slice().sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre)));
+  if(q) arr=arr.filter(r=>cat.search(r).toLowerCase().includes(q));
+  if(cat.filtros){
+    document.querySelectorAll("#filtrosExtra select").forEach(sel=>{
+      if(sel.value) arr=arr.filter(r=>r[sel.dataset.fk]===sel.value);
+    });
+  }
+  $("#conteo").textContent=arr.length+" de "+(DATA[TAB]||[]).length+" registros";
+  const cont=$("#lista"), vac=$("#vacio");
+  if(!arr.length){ cont.innerHTML=""; vac.textContent=q?"Sin resultados.":"No hay registros en este catálogo."; vac.classList.remove("hide"); return; }
+  vac.classList.add("hide");
+  const usaActivo = cat.activo!==false;
+  cont.innerHTML=arr.map(r=>{
+    const cells=cat.cells(r);
+    const fields=cat.head.slice(1).map((h,i)=>`<span class="fld"><span class="fld-l">${h}:</span> ${cells[i+1]}</span>`).join("");
+    const dim = (usaActivo && !r.activo) ? ' rec-off' : '';
+    const btnToggle = usaActivo ? `<button class="${r.activo?'btn-warn':'btn-ok'}" onclick="toggleActivo(${r.id})">${r.activo?'Desactivar':'Activar'}</button>` : '';
+    return `<div class="rec${dim}">
+      <div class="rec-title">${cells[0]}</div>
+      <div class="rec-fields">${fields}</div>
+      <div class="rec-actions">
+        <button class="btn-sec" onclick="abrirForm(${r.id})">✏️ Editar</button>
+        ${btnToggle}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------- formulario dinámico ---------- */
+function abrirForm(id){
+  const cat=CATS[TAB];
+  editId=(id!=null)?id:null;
+  const r = editId!=null ? (DATA[TAB]||[]).find(x=>x.id===editId) : null;
+  const vals = r ? cat.vals(r) : {};
+  $("#modalTit").textContent=(r?"Editar ":"Agregar ")+cat.sing;
+  const siNoFields = cat.form.filter(f=>f.type==="siNo");
+  const otherFields = cat.form.filter(f=>f.type!=="siNo");
+  let html="";
+  otherFields.forEach(fld=>{ html+=campoHtml(fld,vals); });
+  if(siNoFields.length){
+    html+='<div class="grid2" style="margin-top:12px">';
+    siNoFields.forEach(fld=>{ html+="<div>"+campoHtml(fld,vals,true)+"</div>"; });
+    html+='</div>';
+  }
+  $("#formBody").innerHTML=html;
+  $("#formErr").classList.add("hide");
+  $("#modal").classList.add("show");
+}
+function campoHtml(fld,vals,tight){
+  const iid="ff_"+fld.k, val=vals[fld.k]!=null?vals[fld.k]:(fld.type==="siNo"?"Sí":"");
+  let h=`<label for="${iid}"${tight?'':' style="margin-top:12px"'}>${fld.label}${fld.req?' *':''}</label>`;
+  if(fld.type==="siNo"){
+    h+=`<select id="${iid}"><option value="Sí"${val==="Sí"?" selected":""}>Sí</option><option value="No"${val==="No"?" selected":""}>No</option></select>`;
+  }else if(fld.type==="combo"){
+    const opts=(fld.opts()||[]);
+    h+=`<select id="${iid}"><option value="">— Elegir —</option>`
+      +opts.map(o=>`<option${String(o)===String(val)?" selected":""}>${escHtml(o)}</option>`).join("")+`</select>`;
+  }else if(fld.type==="combolibre"){
+    const opts=(fld.opts()||[]), lid="dl_"+fld.k;
+    h+=`<input id="${iid}" list="${lid}" autocomplete="off" value="${escHtml(val)}" placeholder="Elige una o escribe una NUEVA">`
+      +`<datalist id="${lid}">`+opts.map(o=>`<option value="${escHtml(o)}"></option>`).join("")+`</datalist>`;
+  }else{
+    h+=`<input id="${iid}" autocomplete="off" value="${escHtml(val)}" placeholder="">`;
+  }
+  return h;
+}
+function cerrarModal(){ $("#modal").classList.remove("show"); }
+
+async function guardar(){
+  const cat=CATS[TAB], err=$("#formErr"); err.classList.add("hide");
+  const f={};
+  for(const fld of cat.form){
+    const el=document.getElementById("ff_"+fld.k);
+    f[fld.k]=(el?el.value:"").trim();
+    if(fld.req && !f[fld.k]){ err.textContent="Falta: "+fld.label; err.classList.remove("hide"); return; }
+    if(fld.type==="combo" && f[fld.k] && !(fld.opts()||[]).includes(f[fld.k])){ err.textContent="Elige un valor válido para "+fld.label+" (de la lista)."; err.classList.remove("hide"); return; }
+  }
+  // El estado no está en el formulario: se conserva al editar y nace "Activo" al crear (se cambia con el botón Desactivar/Activar).
+  const rExist = editId!=null ? (DATA[TAB]||[]).find(x=>x.id===editId) : null;
+  if(cat.activo!==false){ f.activo = rExist ? SN(rExist.activo) : "Sí"; }
+  const ok = await enviarAdmin({ lista:cat.lista, accion: editId!=null?"editar":"crear", id: editId!=null?editId:0, item:cat.item(f) });
+  if(!ok) return;
+  cerrarModal();
+  if(rExist){   // EDITAR: actualiza al instante en pantalla, sin recargar
+    Object.assign(rExist, cat.map(Object.assign({ID:editId}, cat.item(f))));
+    recomputeOpts(); renderFiltros(); renderTab(); toast("✅ Cambios guardados");
+  }else{        // CREAR: recarga para traer el nuevo con su ID real
+    toast("✅ Registro agregado"); init();
+  }
+}
+async function toggleActivo(id){
+  const cat=CATS[TAB], r=(DATA[TAB]||[]).find(x=>x.id===id); if(!r) return;
+  if(r.activo && !confirm("¿Desactivar «"+r.nombre+"»?\n\nDejará de aparecer en la app, pero NO se borra (puedes reactivarlo cuando quieras).")) return;
+  const f=cat.vals(r); f.activo = r.activo?"No":"Sí";
+  const ok = await enviarAdmin({ lista:cat.lista, accion:"editar", id, item:cat.item(f) });
+  if(ok){   // cambia al instante: chip y atenuado
+    r.activo = !r.activo; recomputeOpts(); renderFiltros(); renderTab();
+    toast(r.activo?"✅ Activado":"✅ Desactivado");
+  }
+}
+
+async function enviarAdmin(payload){
+  if(!ADMIN_URL){ toast("⏳ Guardado no conectado aún."); return false; }
+  try{
+    const r=await fetch(ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    if(!r.ok) throw new Error("status "+r.status);
+    return true;
+  }catch(e){ toast("❌ No se pudo guardar. Reintenta."); return false; }
+}
+
+/* ---------- combo (scroll táctil + reabre todas + selecciona texto) ---------- */
+function setupCombo(id, getOpts){
+  const input=document.getElementById(id); if(!input) return;
+  const wrap=document.createElement("div"); wrap.className="combo";
+  input.parentNode.insertBefore(wrap,input); wrap.appendChild(input);
+  const list=document.createElement("div"); list.className="combo-list hide"; wrap.appendChild(list);
+  let cur=[];
+  function render(all){ const f=all?"":(input.value||"").trim().toLowerCase(); cur=(getOpts()||[]).filter(o=>!f||String(o).toLowerCase().includes(f));
+    if(!cur.length){ list.innerHTML='<div class="combo-empty">Sin resultados</div>'; return; }
+    list.innerHTML=cur.slice(0,300).map((o,i)=>`<div class="combo-opt" data-i="${i}">${escHtml(o)}</div>`).join(""); }
+  function abrir(all){ render(all); list.classList.remove("hide"); }
+  function cerrar(){ list.classList.add("hide"); }
+  function elegir(i){ if(i<0||i>=cur.length) return; input.value=cur[i]; cerrar(); }
+  let sx=0,sy=0,moved=false,downOn=null;
+  list.addEventListener("pointerdown",e=>{ downOn=e.target.closest(".combo-opt"); sx=e.clientX; sy=e.clientY; moved=false; },{passive:true});
+  list.addEventListener("pointermove",e=>{ if(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10) moved=true; },{passive:true});
+  list.addEventListener("pointerup",e=>{ const o=e.target.closest(".combo-opt"); if(o&&o===downOn&&!moved) elegir(+o.dataset.i); downOn=null; });
+  const abrirTodo=()=>{ abrir(true); try{input.select();}catch(e){} };
+  input.addEventListener("focus",abrirTodo); input.addEventListener("click",abrirTodo); input.addEventListener("input",()=>abrir(false));
+  document.addEventListener("pointerdown",e=>{ if(!wrap.contains(e.target)) cerrar(); },{passive:true});
+}
+</script>
+</body>
+</html>
