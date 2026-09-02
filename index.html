@@ -122,7 +122,48 @@
 <div id="toast" class="toast"></div>
 
 <script>
-/* ==== CONFIG ==== */
+/* ============================================================================
+   PANEL DE ADMINISTRACIÓN — Equipamiento de Consultorios (Metrored)
+   Para: quien administra el sistema. Aquí se gestionan los 8 CATÁLOGOS
+   (centros, especialidades, auxiliares, enfermeros, fisioterapistas,
+   productos, lencería y coche de paro) sin abrir SharePoint.
+   ----------------------------------------------------------------------------
+   LEE  con el flujo "Obtener catálogos" (CATALOGOS_URL).
+   ESCRIBE con el flujo de administración (ADMIN_URL), mandando:
+       { lista, accion: "crear"|"editar", id, item }
+   Al CREAR se manda id: 0 (no null: el esquema del flujo lo rechaza).
+
+   AQUÍ NO SE TOCAN LOS REGISTROS. Lo que llenan las auxiliares es
+   inalterable a propósito; este panel solo administra catálogos.
+
+   El botón "📈 Tablero" abre App-Dashboard.html, que TIENE que estar
+   subido en la misma carpeta que este archivo.
+   ----------------------------------------------------------------------------
+   CÓMO ESTÁ ARMADO (importante para mantenerlo)
+
+   Todo gira alrededor del objeto CATS: cada catálogo se DECLARA una vez y
+   la pantalla se construye sola a partir de esa declaración. Cada entrada trae:
+
+       lista   -> nombre de la lista en SharePoint
+       map     -> cómo LEER una fila que viene de SharePoint  (field_1, field_2...)
+       cells   -> qué columnas se ven en la tabla
+       form    -> qué campos salen en el formulario de agregar/editar
+       vals    -> cómo llenar el formulario al editar
+       item    -> cómo ESCRIBIR de vuelta a SharePoint
+
+   >> SI AGREGAS UNA COLUMNA NUEVA A UN CATÁLOGO, hay que tocar los CUATRO:
+      map (leer) + form (capturar) + vals (editar) + item (escribir).
+      Si te saltas "item", el dato se captura pero NUNCA se guarda —
+      y no da ningún error. Es la trampa más fácil de este archivo.
+
+   >> OJO con el nombre interno de "Activo":
+      · En los catálogos que vinieron de importar un CSV se llama field_8.
+      · En el coche de paro se llama Activo, porque esa columna se creó a mano.
+      Por eso el coche lee con tolerancia a los dos y escribe Activo.
+
+   >> Las columnas tipo Opción no llegan como texto sino como {Value:"Sí"}
+      (o [{Value:"Sí"}] si permite varias). Por eso todo pasa por v().
+   ============================================================================ */
 const CATALOGOS_URL = "https://default480bd49c6f894faab39ec7728d95d1.30.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/4e7603afaa634f939c70db7787ae34bb/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=ONrgwLUoMl6UptXg3P6g_QHkeyMV8HtHfuD7ibzRGmI";
 const ADMIN_URL = "https://default480bd49c6f894faab39ec7728d95d1.30.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/30/workflows/46b5fe9999f940d1a6171526c7ebf526/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=edWNGAyBtc6xPdI_Rnu1pfDgbl8h4ipLDiLSmn6tNhQ";
 
@@ -213,17 +254,34 @@ const CATS = {
               reposicion:SN(r.reposicion), retirar:SN(r.retirar), observacion:SN(r.observacion), activo:SN(r.activo)}),
     item:f=>({Title:f.nombre, field_1:f.seccion, field_2:{Value:f.check}, field_3:{Value:f.cantidad},
               field_4:{Value:f.reposicion}, field_5:{Value:f.retirar}, field_6:{Value:f.observacion}, field_7:{Value:f.activo}}) },
-  coc:{ lista:"Cat_CocheParo", sing:"ítem del coche", label:"Coche de paro", src:"cocheparo", activo:false,
-    head:["Ítem","Tipo","Clasificación"],
-    map:x=>({id:x.ID, nombre:v(x.Title), tipo:v(x.field_1), clase:v(x.field_2)}),
-    cells:r=>[`<b>${escHtml(r.nombre)}</b>`, escHtml(r.tipo), escHtml(r.clase)],
+  coc:{ lista:"Cat_CocheParo", sing:"ítem del coche", label:"Coche de paro", src:"cocheparo",
+    head:["Ítem","Tipo","Clasificación","Cumple","Cant.","Repo.","Retirar","Obs.","Estado"],
+    // field_8 = Activo. Si está vacío se toma como ACTIVO (no se oculta nada por estar en blanco).
+    map:x=>({id:x.ID, nombre:v(x.Title), tipo:v(x.field_1), clase:v(x.field_2),
+             check:si(x.field_3), cantidad:si(x.field_4), reposicion:si(x.field_5), retirar:si(x.field_6),
+             observacion:si(x.field_7),
+             // el nombre interno de Activo puede ser field_8 (si vino del CSV) o Activo (si se creó a mano)
+             activo: (v(x.field_8)==="" && v(x.Activo)==="") ? true : (si(x.field_8) || si(x.Activo))}),
+    cells:r=>[`<b>${escHtml(r.nombre)}</b>`, escHtml(r.tipo), escHtml(r.clase),
+              siNo(r.check), siNo(r.cantidad), siNo(r.reposicion), siNo(r.retirar), siNo(r.observacion), estado(r.activo)],
     search:r=>r.nombre+" "+r.tipo+" "+r.clase,
     filtros:[{k:"tipo",label:"Tipo"},{k:"clase",label:"Clasificación"}],
     form:[{k:"nombre",label:"Nombre del ítem",type:"text",req:true},
           {k:"tipo",label:"Tipo",type:"combolibre",opts:()=>["Diario","Quincenal"],req:true},
-          {k:"clase",label:"Clasificación",type:"combolibre",opts:()=>CLASE_COC,req:true}],
-    vals:r=>({nombre:r.nombre, tipo:r.tipo, clase:r.clase}),
-    item:f=>({Title:f.nombre, field_1:f.tipo, field_2:f.clase}) }
+          {k:"clase",label:"Clasificación",type:"combolibre",opts:()=>CLASE_COC,req:true},
+          {k:"check",label:"Cumple (check)",type:"siNo"},
+          {k:"cantidad",label:"Cantidad",type:"siNo"},
+          {k:"reposicion",label:"Reposición",type:"siNo"},
+          {k:"retirar",label:"Retirar",type:"siNo"},
+          {k:"observacion",label:"Observación",type:"siNo"}],
+    vals:r=>({nombre:r.nombre, tipo:r.tipo, clase:r.clase,
+              check:SN(r.check), cantidad:SN(r.cantidad), reposicion:SN(r.reposicion),
+              retirar:SN(r.retirar), observacion:SN(r.observacion), activo:SN(r.activo)}),
+    // OJO: aquí Activo se llama "Activo" (columna creada a mano), no "field_8"
+    // como en los demás catálogos (esos vinieron de la importación del CSV).
+    item:f=>({Title:f.nombre, field_1:f.tipo, field_2:f.clase,
+              field_3:{Value:f.check}, field_4:{Value:f.cantidad}, field_5:{Value:f.reposicion},
+              field_6:{Value:f.retirar}, field_7:{Value:f.observacion}, Activo:{Value:f.activo}}) }
 };
 
 let DATA={}, CENTROS=[], TAB="aux", editId=null;
@@ -368,6 +426,20 @@ async function toggleActivo(id){
   }
 }
 
+/* Manda UN cambio al flujo de administración y espera su confirmación.
+   payload: { lista, accion: "crear"|"editar", id, item }
+            (al crear, id va en 0 — el esquema del flujo rechaza null)
+
+   Medido el 02/09/2026: cada llamada tarda ~2 segundos, y el endpoint falla
+   de forma intermitente (corta la conexión cada tantas llamadas).
+
+   >> OJO SI ALGÚN DÍA SE HACE EDICIÓN MASIVA:
+      esta función NO reintenta. Para un cambio de a uno está bien (sale el
+      aviso y el usuario reintenta ese ítem), pero llamarla en bucle para
+      cambiar 36 productos son ~80 segundos y es casi seguro que alguna
+      llamada falle -> el cambio quedaría aplicado a medias y sin saber
+      dónde se cortó. Para eso hay que mandar LOTES a un flujo que los
+      recorra por dentro, con reintento por lote. */
 async function enviarAdmin(payload){
   if(!ADMIN_URL){ toast("⏳ Guardado no conectado aún."); return false; }
   try{
