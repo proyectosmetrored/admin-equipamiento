@@ -164,30 +164,52 @@ function armarREGS(cabeceras, crudo){
 }
 
 /* Aviso flotante de progreso mientras se completa la descarga. */
-function avisoCarga(n, cargando){
+/* Cartel flotante de abajo. Tres estados:
+     cargando            -> negro con rueda girando
+     terminó completo    -> se quita (no molesta)
+     terminó INCOMPLETO  -> ROJO y se queda puesto, con botón para recargar
+   El tercer estado es el importante: antes el cartel simplemente desaparecía
+   y el tablero parecía completo aunque le faltaran datos. */
+function avisoCarga(n, cargando, incompleto){
   let b=$("#avisoCarga");
-  if(!cargando){ if(b) b.remove(); return; }
+  if(!cargando && !incompleto){ if(b) b.remove(); return; }   // cargó todo: fuera el cartel
   if(!b){
     b=document.createElement("div"); b.id="avisoCarga";
     b.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:99;"+
-      "background:#0f172a;color:#fff;padding:10px 18px;border-radius:999px;font-size:13.5px;"+
+      "color:#fff;padding:10px 18px;border-radius:999px;font-size:13.5px;max-width:92vw;"+
       "font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.28);display:flex;align-items:center;gap:9px";
     document.body.appendChild(b);
   }
-  b.innerHTML='<span style="display:inline-block;width:11px;height:11px;border:2px solid #fff;'+
-    'border-top-color:transparent;border-radius:50%;animation:girar .8s linear infinite"></span>'+
-    'Cargando más datos… '+n.toLocaleString("es-EC")+' ítems';
+  if(cargando){
+    b.style.background="#0f172a";
+    b.innerHTML='<span style="display:inline-block;width:11px;height:11px;border:2px solid #fff;'+
+      'border-top-color:transparent;border-radius:50%;animation:girar .8s linear infinite"></span>'+
+      'Cargando más datos… '+n.toLocaleString("es-EC")+' ítems';
+  }else{
+    b.style.background="#b91c1c";   // rojo: no se quita hasta que recarguen
+    b.innerHTML='⚠️ Datos incompletos ('+n.toLocaleString("es-EC")+' ítems). Se cortó la conexión, '+
+      'así que <b>Cumplimiento, Repuesto y Retirado no son confiables</b>. '+
+      '<button onclick="location.reload()" style="margin-left:6px;background:#fff;color:#b91c1c;'+
+      'border:none;border-radius:7px;padding:5px 12px;font-weight:700;cursor:pointer;font-family:inherit">'+
+      'Recargar</button>';
+  }
 }
 
 /* Pide una tanda de detalle a partir de un ID, con reintentos. */
+/* Pide una tanda de detalle a partir de un ID.
+   REINTENTA 8 VECES CON PAUSAS CRECIENTES (1,5s · 3s · 4,5s …).
+   Por qué: este endpoint corta la conexión cada tantas llamadas (medido:
+   ~6 fallos de 15 intentos). Con pocos reintentos el bucle se rinde a mitad
+   de camino y el tablero se queda con datos incompletos. */
 async function pedirLote(desdeId){
-  for(let i=0;i<4;i++){
+  for(let i=0;i<8;i++){
     try{
       const r = await fetch(DASHBOARD_URL, { method:"POST",
         headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ desdeId: desdeId }) });
-      if(r.ok) return await r.json();
+      if(r.ok) return await r.json();      // si el JSON viene cortado, revienta y reintenta
     }catch(e){ /* reintenta */ }
+    await new Promise(r=>setTimeout(r, 1500*(i+1)));
   }
   return null;
 }
@@ -202,7 +224,10 @@ async function init(){
     // Carga POR TANDAS: el flujo devuelve hasta LOTE ítems por llamada, ordenados
     // por ID. Pedimos "los siguientes a partir del último ID" hasta que se acabe.
     // Así escala sin límite (no depende de traer todo de un golpe).
-    let desdeId=0, cabeceras=null, crudo=[], vistos=new Set(), vueltas=0, mostrado=false;
+    // 'completo' distingue "recorrí todo el detalle" de "me quedé a medias".
+    // Si queda en false, al final se muestra un aviso ROJO en vez de quitar el cartel:
+    // datos incompletos mostrados como completos es justo el error que arreglamos.
+    let desdeId=0, cabeceras=null, crudo=[], vistos=new Set(), vueltas=0, mostrado=false, completo=false;
     while(vueltas++ < 400){
       const d=await pedirLote(desdeId);
       if(!d){ if(mostrado) break; throw new Error("sin datos"); }   // si ya hay algo pintado, se conserva
@@ -222,13 +247,17 @@ async function init(){
       avisoCarga(crudo.length, true);
       await new Promise(r=>setTimeout(r,0));   // deja respirar a la pantalla
 
-      if(!nuevos.length || lote.length < LOTE) break;
+      // Tanda incompleta = era la última que había: recorrimos TODO.
+      if(lote.length < LOTE){ completo=true; break; }
+      // Tanda llena pero toda repetida = el flujo no está respetando "desdeId".
+      // Se corta (como antes) pero NO se marca completo: faltan datos.
+      if(!nuevos.length) break;
       let max=desdeId;
       for(const x of lote){ const n=Number(x.ID); if(isFinite(n) && n>max) max=n; }
       if(max<=desdeId) break;              // seguridad: nunca repetir la misma tanda
       desdeId=max;
     }
-    avisoCarga(crudo.length, false);       // terminó de cargar
+    avisoCarga(crudo.length, false, !completo);   // si no está completo, avisa en rojo
   }catch(e){ $("#cargando").innerHTML="No se pudieron cargar los registros. Revisa el internet y recarga."; }
 }
 function normReg(x){ return {
@@ -265,6 +294,13 @@ function limpiar(){ Object.keys(F).forEach(k=>F[k]=""); render(); }
    Hoja 2 "Resumen": totales por especialidad / categoría / producto.
    ===================================================================== */
 
+/* El N° de consultorio casi siempre es un número ("8"), pero no siempre: hay
+   consultorios como "rx". Se convierte a número SÓLO si es puramente numérico.
+   Así Excel los ordena bien y no marca "número guardado como texto". */
+function numOtexto(x){
+  const s=String(x==null?"":x).trim();
+  return (s!=="" && /^\d+$/.test(s)) ? Number(s) : s;
+}
 /* Aplica los mismos filtros que el tablero y devuelve las filas planas. */
 function filasDetalle(){
   const filas=[];
@@ -272,13 +308,13 @@ function filasDetalle(){
     const dets=(r.detalle||[]).filter(d=>!F.categoria || d.categoria===F.categoria);
     if(!dets.length){
       // el registro existe pero no aporta ítems con el filtro puesto: no se omite
-      filas.push([r.id,r.fecha,r.hora,r.centro,r.especialidad,r.numeroConsultorio,r.turno,
+      filas.push([r.id,r.fecha,r.hora,r.centro,r.especialidad,numOtexto(r.numeroConsultorio),r.turno,
                   r.auxiliar,r.enfermero,r.fisioterapista,r.observacionesGenerales,r.creadoISO,
                   "","","","",null,null,null,""]);
       return;
     }
     dets.forEach(d=>{
-      filas.push([r.id,r.fecha,r.hora,r.centro,r.especialidad,r.numeroConsultorio,r.turno,
+      filas.push([r.id,r.fecha,r.hora,r.centro,r.especialidad,numOtexto(r.numeroConsultorio),r.turno,
                   r.auxiliar,r.enfermero,r.fisioterapista,r.observacionesGenerales,r.creadoISO,
                   d.categoria,d.subgrupo,d.item,
                   d.cumple===true?"Sí":(d.cumple===false?"No":""),
