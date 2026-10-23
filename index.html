@@ -90,6 +90,7 @@
       <button id="tab_esp" onclick="setTab('esp')">Especialidades</button>
       <button id="tab_prod" onclick="setTab('prod')">Productos</button>
       <button id="tab_len" onclick="setTab('len')">Lencería</button>
+      <button id="tab_lav" onclick="setTab('lav')">Lavandería</button>
       <button id="tab_coc" onclick="setTab('coc')">Coche de paro</button>
     </div>
 
@@ -146,9 +147,9 @@
 <script>
 /* ============================================================================
    PANEL DE ADMINISTRACIÓN — Equipamiento de Consultorios (Metrored)
-   Para: quien administra el sistema. Aquí se gestionan los 8 CATÁLOGOS
+   Para: quien administra el sistema. Aquí se gestionan los 9 CATÁLOGOS
    (centros, especialidades, auxiliares, enfermeros, fisioterapistas,
-   productos, lencería y coche de paro) sin abrir SharePoint.
+   productos, lencería, lavandería y coche de paro) sin abrir SharePoint.
    ----------------------------------------------------------------------------
    LEE  con el flujo "Obtener catálogos" (CATALOGOS_URL).
    ESCRIBE con el flujo de administración (ADMIN_URL), mandando:
@@ -198,7 +199,7 @@ function estado(a){ return a?'<span class="badge b-si">Activo</span>':'<span cla
 function siNo(b){ return b?'<span class="badge b-si">Sí</span>':'<span class="badge b-no">No</span>'; }
 const SN = b => b?"Sí":"No";
 
-let ESPEC=[], CATEG=[], SECC_LEN=[], CLASE_COC=[];   // opciones para los formularios
+let ESPEC=[], CATEG=[], SECC_LEN=[], SECC_LAV=[], CLASE_COC=[];   // opciones para los formularios
 
 /* ==== Config de catálogos ==== */
 const persona = (lista,sing,label,src)=>({ lista,sing,label,src,
@@ -276,6 +277,27 @@ const CATS = {
               reposicion:SN(r.reposicion), retirar:SN(r.retirar), observacion:SN(r.observacion), activo:SN(r.activo)}),
     item:f=>({Title:f.nombre, field_1:f.seccion, field_2:{Value:f.check}, field_3:{Value:f.cantidad},
               field_4:{Value:f.reposicion}, field_5:{Value:f.retirar}, field_6:{Value:f.observacion}, field_7:{Value:f.activo}}) },
+  // Lavandería: calco de Lencería (lista propia Cat_Lavanderia, mismas 8 columnas en el mismo orden)
+  lav:{ lista:"Cat_Lavanderia", sing:"prenda", label:"Lavandería", src:"lavanderia",
+    head:["Prenda","Sección","Cumple","Cant.","Repo.","Retirar","Obs.","Estado"],
+    map:x=>({id:x.ID, nombre:v(x.Title), seccion:v(x.field_1),
+             check:si(x.field_2), cantidad:si(x.field_3), reposicion:si(x.field_4), retirar:si(x.field_5),
+             observacion:si(x.field_6), activo:si(x.field_7)}),
+    cells:r=>[`<b>${escHtml(r.nombre)}</b>`, escHtml(r.seccion),
+              siNo(r.check), siNo(r.cantidad), siNo(r.reposicion), siNo(r.retirar), siNo(r.observacion), estado(r.activo)],
+    search:r=>r.nombre+" "+r.seccion,
+    filtros:[{k:"seccion",label:"Sección"}],
+    form:[{k:"nombre",label:"Nombre de la prenda",type:"text",req:true},
+          {k:"seccion",label:"Sección",type:"combolibre",opts:()=>SECC_LAV,req:true},
+          {k:"check",label:"Cumple (check)",type:"siNo"},
+          {k:"cantidad",label:"Cantidad",type:"siNo"},
+          {k:"reposicion",label:"Reposición",type:"siNo"},
+          {k:"retirar",label:"Retirar",type:"siNo"},
+          {k:"observacion",label:"Observación",type:"siNo"}],
+    vals:r=>({nombre:r.nombre, seccion:r.seccion, check:SN(r.check), cantidad:SN(r.cantidad),
+              reposicion:SN(r.reposicion), retirar:SN(r.retirar), observacion:SN(r.observacion), activo:SN(r.activo)}),
+    item:f=>({Title:f.nombre, field_1:f.seccion, field_2:{Value:f.check}, field_3:{Value:f.cantidad},
+              field_4:{Value:f.reposicion}, field_5:{Value:f.retirar}, field_6:{Value:f.observacion}, field_7:{Value:f.activo}}) },
   coc:{ lista:"Cat_CocheParo", sing:"ítem del coche", label:"Coche de paro", src:"cocheparo",
     head:["Ítem","Tipo","Clasificación","Cumple","Cant.","Repo.","Retirar","Obs.","Estado"],
     // field_8 = Activo. Si está vacío se toma como ACTIVO (no se oculta nada por estar en blanco).
@@ -325,6 +347,7 @@ function recomputeOpts(){
   ESPEC=(DATA.esp||[]).filter(r=>r.activo).map(r=>r.nombre).sort();
   CATEG=[...new Set((DATA.prod||[]).map(r=>r.categoria).filter(Boolean))].sort();
   SECC_LEN=[...new Set((DATA.len||[]).map(r=>r.seccion).filter(Boolean))].sort();
+  SECC_LAV=[...new Set((DATA.lav||[]).map(r=>r.seccion).filter(Boolean))].sort();
   CLASE_COC=[...new Set((DATA.coc||[]).map(r=>r.clase).filter(Boolean))].sort();
 }
 
